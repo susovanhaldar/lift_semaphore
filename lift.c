@@ -11,11 +11,11 @@
 #define P(s) semop(s, &pop, 1)
 #define V(s) semop(s, &vop, 1)
 #define NFLOORS 10
-#define NLIFT 3
+#define NLIFT 3 // increasing and decreasing lift needs to change the animate function
 #define  NPEOPLES 20
-int pid[NPEOPLES];  //pid for all processes
-int lid[NLIFT];  //pid for lift
-  //here We can set the number of people
+int pid[NPEOPLES];  //pid for all people processes
+int lid[NLIFT];  //pid for lift processes
+//here We can set the number of people
 //for each floor we are storing this info
 typedef struct Floor_info {
     int waitingtogoup;    //number of people willing to go up from this floor
@@ -36,8 +36,8 @@ typedef struct lift_info {
     int stops[NFLOORS];    //this will count the number of people willing to leave the lift
     int stopsem[NFLOORS];  //here each process wait for a floor using this semaphore
 } lift_info;
-Floor_info *parent_shm;  //parent reference of the floor shared memory
-lift_info *parent_lft;   //parent reference of the lift shared memory
+Floor_info *parent_floor_shm;  //parent reference of the floor shared memory
+lift_info *parent_lift_shm;   //parent reference of the lift shared memory
 void errExit(char *str){
     fprintf(stderr,"error happen with desctiption: %s\n",str);
     exit(0);
@@ -58,57 +58,57 @@ void sigHandler(int sig){
     }
     
     //detaching shared memory here.
-    if(shmdt(parent_shm)==-1) errExit("detaching shared memory");
-    if(shmdt(parent_lft)==-1) errExit("detaching shared memory");
+    if(shmdt(parent_floor_shm)==-1) errExit("detaching shared memory");
+    if(shmdt(parent_lift_shm)==-1) errExit("detaching shared memory");
     exit(0);
 }
 //this function will animate the output
 //This function will only work with 3 lifts. If more lift is present then a slight modification is needed.
-void animate(Floor_info *parent_shm, lift_info *parent_lft) {
+void animate(Floor_info *parent_floor_shm, lift_info *parent_lift_shm) {
     int i, j, k;
-    int lift1 = parent_lft[0].position, lift2 = parent_lft[1].position, lift3 = parent_lft[2].position;
-    int c1 = parent_lft[0].peopleinlift, c2 = parent_lft[1].peopleinlift, c3 = parent_lft[2].peopleinlift;
+    int lift1 = parent_lift_shm[0].position, lift2 = parent_lift_shm[1].position, lift3 = parent_lift_shm[2].position;
+    int c1 = parent_lift_shm[0].peopleinlift, c2 = parent_lift_shm[1].peopleinlift, c3 = parent_lift_shm[2].peopleinlift;
     system("clear");
-    printf("    building       l1(%2d) l2(%2d) l3(%2d)\n",parent_lft[0].capacity,parent_lft[1].capacity,parent_lft[2].capacity);
+    printf("    building       l1(%2d) l2(%2d) l3(%2d)\n",parent_lift_shm[0].capacity,parent_lift_shm[1].capacity,parent_lift_shm[2].capacity);
     printf("_____________________________________\n");
     for (j = NFLOORS - 1; j >= 0; j--) {
         if (lift1 == j && lift2 == j && lift3 == j) {
-            printf("|  %3du    %3dd   |  _|_   _|_   _|_\n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |  _|_   _|_   _|_\n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |  |  |  |  |  |  |\n");
             printf("|       /|\\       |  |%2d|  |%2d|  |%2d|\n", c1, c2, c3);
             printf("|_______/\\________|  |__|  |__|  |__|\n");
         } else if (lift1 == j && lift2 == j) {
-            printf("|  %3du    %3dd   |  _|_   _|_    |  \n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |  _|_   _|_    |  \n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |  |  |  |  |   |  \n");
             printf("|       /|\\       |  |%2d|  |%2d|   |  \n", c1, c2);
             printf("|_______/\\________|  |__|  |__|   |  \n");
         } else if (lift1 == j && lift3 == j) {
-            printf("|  %3du    %3dd   |  _|_    |    _|_\n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |  _|_    |    _|_\n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |  |  |   |    |  |\n");
             printf("|       /|\\       |  |%2d|   |    |%2d|\n", c1, c3);
             printf("|_______/\\________|  |__|   |    |__|\n");
         } else if (lift2 == j && lift3 == j) {
-            printf("|  %3du    %3dd   |   |    _|_   _|_\n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |   |    _|_   _|_\n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |   |    |  |  |  |\n");
             printf("|       /|\\       |   |    |%2d|  |%2d|\n", c2, c3);
             printf("|_______/\\________|   |    |__|  |__|\n");
         } else if (lift1 == j) {
-            printf("|  %3du    %3dd   |  _|_    |     | \n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |  _|_    |     | \n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |  |  |   |     | \n");
             printf("|       /|\\       |  |%2d|   |     | \n", c1);
             printf("|_______/\\________|  |__|   |     | \n");
         } else if (lift2 == j) {
-            printf("|  %3du    %3dd   |   |    _|_    |  \n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |   |    _|_    |  \n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |   |    |  |   |  \n");
             printf("|       /|\\       |   |    |%2d|   |  \n", c2);
             printf("|_______/\\________|   |    |__|   |  \n");
         } else if (lift3 == j) {
-            printf("|  %3du    %3dd   |   |     |    _|_\n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |   |     |    _|_\n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |   |     |    |  |\n");
             printf("|       /|\\       |   |     |    |%2d|\n", c3);
             printf("|_______/\\________|   |     |    |__|\n");
         } else {
-            printf("|  %3du    %3dd   |   |     |     | \n", parent_shm[j].waitingtogoup, parent_shm[j].waitingtogodown);
+            printf("|  %3du    %3dd   |   |     |     | \n", parent_floor_shm[j].waitingtogoup, parent_floor_shm[j].waitingtogodown);
             printf("|        *        |   |     |     | \n");
             printf("|       /|\\       |   |     |     | \n");
             printf("|_______/\\________|   |     |     | \n");
@@ -135,20 +135,32 @@ void create_persons(int i, int shmid_floors, int shmid_lift, struct sembuf pop, 
             ;
         //if person wants to go down    
         if (destination < current) {
+            // people lock the mutex and increment waiting to go down as the person is willign to go down
             P(flr[current].mutex);
             flr[current].waitingtogodown++;
+            // signal the mutex to allow other process to access the floor variables
             V(flr[current].mutex);
+            // Wait for a lift to signal that it is ready to take the person from current floor then the person can go inside the lift
             P(flr[current].down_arrow);
+            // before boarding lift, decrement the waiting to go down as the person is going to board the lift
             flr[current].waitingtogodown--;
             int lift = flr[current].current_lift;
             //code for boarding lift 
+            // increment people in lift
             lft[lift].peopleinlift++;
+            // increment the number of people willing to go to the destination floor in the lift
             lft[lift].stops[destination]++;
+            // signal the mutex to allow lift process to access the floor variables
             V(flr[current].mutex);
+            // wait for the lift to signal that it has reached the destination floor
             P(lft[lift].stopsem[destination]);
+            // decrement the people in lift as the person is going to leave the lift
             lft[lift].peopleinlift--;
+            // decrement the number of people willing to go to the destination floor in the lift
             lft[lift].stops[destination]--;
+            // signal the mutex to allow the lift to deboard other peoples
             V(lft[lift].mutex[destination]);
+            // update the current floor as the destination floor 
             current = destination;
         //if person willing to go up    
         } else {
@@ -177,7 +189,8 @@ void create_persons(int i, int shmid_floors, int shmid_lift, struct sembuf pop, 
 void create_lift(int i, int shmid_floors, int shmid_lift, struct sembuf pop, struct sembuf vop) {
     int id = i;   
     lift_info *lft ;
-    Floor_info *flr;         
+    Floor_info *flr;    
+    // actual reference of the shared memories for lifts and floors     
     if((lft = (lift_info *)shmat(shmid_lift, 0, 0))==(void*)-1) errExit("shmat");
     if((flr = (Floor_info *)shmat(shmid_floors, 0, 0))==(void*)-1) errExit("shmat");
     lft[id].no = id;
@@ -187,29 +200,40 @@ void create_lift(int i, int shmid_floors, int shmid_lift, struct sembuf pop, str
     lft[id].capacity = 3 * i + 2;   //by default we make the capacity as this  equation. But we can change this
     while (1) {
         sleep(1);
+        // This loop deboard the people from the lift if the lift has reached the destination floor
         while (1) {
+            // lock the mutex to allow only one process to change the lift variables
             P(lft[id].mutex[lft[id].position]);
             if (lft[id].stops[lft[id].position]) {
+                // deboard people that are waiting to go to the current floor by signaling the semaphore once for each person
                 V(lft[id].stopsem[lft[id].position]);
                 sleep(1);
             } else {
+                // if no peoples are waiting signal the mutex itself
                 V(lft[id].mutex[lft[id].position]);
                 break;
             }
         }
+        // this loop board peoples inside lift to go up
         if (lft[id].direction == 1) {
             while (1) {
+                // wait for mutex of its current floor
                 P(flr[lft[id].position].mutex);
+                // check if any peoples are waiting to go up from current floor and the lift has space to board
                 if (flr[lft[id].position].waitingtogoup && lft[id].peopleinlift < lft[id].capacity) {
                     flr[lft[id].position].current_lift = id;
+                    // signal this semaphore to allow one people to go inside, and people will signal the mutex for the floor
                     V(flr[lft[id].position].up_arrow);
                     sleep(2);
                 } else {
+                    // signal the mutex itself
                     V(flr[lft[id].position].mutex);
                     break;
                 }
             }
-        } else if (lft[id].direction == 0) {
+        }
+        // this loop board peoples inside lift to go down 
+        else if (lft[id].direction == 0) {
             while (1) {
                 P(flr[lft[id].position].mutex);
                 if (flr[lft[id].position].waitingtogodown && lft[id].peopleinlift < lft[id].capacity) {
@@ -222,6 +246,7 @@ void create_lift(int i, int shmid_floors, int shmid_lift, struct sembuf pop, str
                 }
             }
         }
+        // change lift positions and directions
         if (lft[id].direction == 1 && lft[id].position == NFLOORS - 1) {
             lft[id].direction = 0;
         } else if (lft[id].direction == 1) {
@@ -246,25 +271,25 @@ int main() {
     vop.sem_op = 1;
     //creating shared memory for floors
     if((shmid_floors = shmget(IPC_PRIVATE, NFLOORS * sizeof(Floor_info), 0777 | IPC_CREAT))==-1) errExit("shmat");
-    if((parent_shm = (Floor_info *)shmat(shmid_floors, 0, 0))==(void*)-1) errExit("shmat");
+    if((parent_floor_shm = (Floor_info *)shmat(shmid_floors, 0, 0))==(void*)-1) errExit("shmat");
     //we create 3 semaphore for each floor, one for going up, one for going down, one for mutex operation in each floor
     for (i = 0; i < NFLOORS; i++) {
-        if((parent_shm[i].up_arrow = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");
-        if((parent_shm[i].down_arrow = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");
-        if((parent_shm[i].mutex = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");
-        if((semctl(parent_shm[i].up_arrow, 0, SETVAL, 0))==-1) errExit("semctl");    //each process should wait for the lift's signal, so we set the semaphore value as 0
-        if((semctl(parent_shm[i].down_arrow, 0, SETVAL, 0))==-1) errExit("semctl");  //each process should wait for the lift's signal, so we set the semaphore value as 0
-        if((semctl(parent_shm[i].mutex, 0, SETVAL, 1))==-1) errExit("semctl");       //we allow only one process to access floor variables, so we set the semaphore mutex as 1
+        if((parent_floor_shm[i].up_arrow = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");
+        if((parent_floor_shm[i].down_arrow = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");
+        if((parent_floor_shm[i].mutex = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");
+        if((semctl(parent_floor_shm[i].up_arrow, 0, SETVAL, 0))==-1) errExit("semctl");    //each process should wait for the lift's signal, so we set the semaphore value as 0
+        if((semctl(parent_floor_shm[i].down_arrow, 0, SETVAL, 0))==-1) errExit("semctl");  //each process should wait for the lift's signal, so we set the semaphore value as 0
+        if((semctl(parent_floor_shm[i].mutex, 0, SETVAL, 1))==-1) errExit("semctl");       //we allow only one process to access floor variables, so we set the semaphore mutex as 1
     }
     if((shmid_lift = shmget(IPC_PRIVATE, sizeof(lift_info) * NLIFT, 0777 | IPC_CREAT))==-1) errExit("semget");
-    if((parent_lft = (lift_info *)shmat(shmid_lift, 0, 0))==(void*)-1) errExit("shmat");
+    if((parent_lift_shm = (lift_info *)shmat(shmid_lift, 0, 0))==(void*)-1) errExit("shmat");
     for (j = 0; j < NFLOORS; j++) {
         for (k = 0; k < NLIFT; k++) {
-            parent_lft[k].stops[j] = 0;                                           //by default we assumes that no one in the lift
-            if((parent_lft[k].stopsem[j] = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");  //persons will wait on this semaphores to get down in a floor
-            if((parent_lft[k].mutex[j] = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");    //this semaphore is for concurrent updation of the lift variables
-            if((semctl(parent_lft[k].stopsem[j], 0, SETVAL, 0))==-1) errExit("semctl");                       //we set the value of the semaphore as 0 to wait.
-            if((semctl(parent_lft[k].mutex[j], 0, SETVAL, 1))==-1) errExit("semctl");                         //we set the mutex as 1 as we allow only 1 process
+            parent_lift_shm[k].stops[j] = 0;                                           //by default we assumes that no one in the lift
+            if((parent_lift_shm[k].stopsem[j] = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");  //persons will wait on this semaphores to get down in a floor
+            if((parent_lift_shm[k].mutex[j] = semget(IPC_PRIVATE, 1, 0777 | IPC_CREAT))==-1) errExit("semget");    //this semaphore is for concurrent updation of the lift variables
+            if((semctl(parent_lift_shm[k].stopsem[j], 0, SETVAL, 0))==-1) errExit("semctl");                       //we set the value of the semaphore as 0 to wait.
+            if((semctl(parent_lift_shm[k].mutex[j], 0, SETVAL, 1))==-1) errExit("semctl");                         //we set the mutex as 1 as we allow only 1 process
         }
     }
     //creating process for each people
@@ -287,7 +312,7 @@ int main() {
     //code for parent to check the current state of the system.
     while (1) {
         
-        animate(parent_shm, parent_lft);
+        animate(parent_floor_shm, parent_lift_shm);
         sleep(1);
     }
 }
