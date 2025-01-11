@@ -1,7 +1,9 @@
 ## Lift Simulation using Process, Semaphores, and Shared Memory
 ### Project Overview
 This project simulates the movement of lifts in a building using process, semaphores, and shared memory. The simulation involves multiple lifts and persons, each with their own process, interacting with each other to simulate the boarding and deboarding of persons at different floors.
-[![Demo Video](lift_simulation)](media/lift_simulation.mp4)
+
+https://github.com/user-attachments/assets/bc624a5b-4c89-42ee-9b6b-f96a65e30960
+
 ### Features
 * Simulates multiple lifts with their own characteristics
 > + Lift
