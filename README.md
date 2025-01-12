@@ -29,7 +29,7 @@ https://github.com/user-attachments/assets/bc624a5b-4c89-42ee-9b6b-f96a65e30960
 2. Semaphores are used to synchronize access to shared resources, such as the lift's current position and capacity
 3. Shared memory is used to share data between processes, such as the lift's characteristics and the person's destination floor
 4. The animator is implemented using a separate thread or process that updates the visualization in real-time
-> Detailed explaination of the explaination is commented inside code
+> Proper comments are given inside code for easy understanding
 ### Getting Started
 1. Clone the repository using `git clone`
 2. Compile the code using `gcc lift.c -o lift_simulation`
